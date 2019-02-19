@@ -1,0 +1,162 @@
+---
+title: "HW3"
+author: "Louis Jochems"
+date: "February 15, 2019"
+output: word_document
+---
+
+```{r Question 1}
+####Question 1####
+setwd("~/R/homework3-master")
+diamonds<-read.csv("diamond.csv")
+head(diamonds)
+
+diamonds$cut2<-factor(diamonds$cut,levels=c("Premium","Fair","Good","Very Good","Ideal"))
+diamonds$cut3<-factor(diamonds$cut,levels=c("Fair","Good","Very Good","Premium","Ideal"))
+plot(price~cut3,data=diamonds,xlab="Cut",ylab="Price ($)") 
+
+#using a poisson on positive continuous response var 
+m1<- glm(price~cut2,data=diamonds,family="poisson")
+coef(m1)
+confint(m1)
+#a
+exp(8.4303835) # did premium as baseline because it has has highest median in data
+
+#b effects of different cuts compared to premium
+##fair
+exp(-0.0504411) #5% decrease OR
+exp(8.4303835)-exp(8.4303835-0.0504411) #decrease of $237.17 
+
+##good
+exp(-0.1542778) #15% decrease OR 
+exp(8.4303835)-exp(8.4303835-0.1542778) #decrease of $746.72
+
+##very good
+exp(-0.1409043) # 14% decrease OR
+exp(8.4303835)-exp(8.4303835-0.1409043) # decrease of $693.66
+
+##ideal
+exp(-0.2820703)#25% decrease OR 
+exp(8.4303835)-exp(8.4303835-0.2820703) # decrease of $1493.881
+
+###OutPut/Parameter Estimates/CI 
+plot(price~cut3,data=diamonds,xlab="Cut Quality",ylab="Price ($)") 
+
+# With the premium cut as the "control treatment", its coefficient in the model is a baseline price of $4584.26. Comparing all of the other cuts to this price, we see that the cost of fair cut diamonds is about $237.14 less than premium, good cut diamonds cost $746.72 less, very good cuts cost $693.66 less, and the largest decrease of $1493.88 in price for ideal cut. For 95% CI, the effects of all of these cuts compared to premium are significant and negative (all CI's are in negative range and thus do not cross zero). 
+```
+
+
+``` {r Question 2}
+###Question 2
+setwd("~/R/homework3-master")
+cuse<- read.csv("contraception.csv")
+head(cuse)
+contra <- cbind(cuse$using, cuse$notUsing)
+m1<-glm(contra~cuse$education,family="binomial")
+confint(m1)
+coef(m1)
+#a
+plogis(-0.81020374)
+#low from high ed
+plogis(-0.81020374)-plogis(-0.81020374+0.09248529)
+
+#Output of Plot/Parameter/CI
+#plotting data as proportion of women using contra out of each obs sample size 
+Contraception_Rate<-cuse$using/cuse$Total
+plot(Contraception_Rate~cuse$education, ylab="Contraception Rate", xlab="Education Level")
+
+# The coefficient, or baseline, rate of contraception is around 30% among women with low education levels in this study. The effect of education level is low, with only a 0.2% difference between the two categories. The CI's for education crosses zero, indicating there is a pretty good chance of zero effect of education level on contraception (along with a non significant p value of 0.4). Therefore, I accept the null hypothesis that there is no effect of education level on contraception rate among married women in this study.  
+
+```
+
+``` {r question 3}
+#### Question 3 #### 
+setwd("~/R/homework3-master")
+hurricanes<-read.csv("Hurricane Dataset.csv") 
+hurricanes<-hurricanes[!apply(hurricanes == "",1, all),]
+head(hurricanes)
+plot(alldeaths~Gender_MF, data=hurricanes)
+hist(hurricanes$alldeaths)
+
+m1<- glm(hurricanes$alldeaths~hurricanes$Gender_MF,family="poisson")
+coef(m1)
+#a
+exp(3.1679220)
+#b
+exp(3.1679220)-exp(3.1679220-0.5123354) # 9.5 less deaths? 
+confint(m1)
+
+library("MASS")
+m1<- glm.nb(hurricanes$alldeaths~hurricanes$Gender_MF)
+summary(m1)
+coef(m1)
+confint(m1)
+
+## Since these data are overdispersed (see historgram of deaths), perhaps Jung et al. could have instead used a negative binomial model to more optimally estimate these data. The negative binomial glm includes k (Theta), the overdispersion parameter, which allows the model to treat more of the variance of these data due to random chance and not solely from the effect of gender name of hurricanes. Under this model, we see that while we still have the same coefficient (9.5 more deaths from female name compared to male names), we no longer have a significant effect of gender name on the number of deaths (CI interval crosses zero and p value now 0.12). 
+```
+
+
+```{r question 4}
+#### Question 4 #### 
+setwd("~/R/homework3-master")
+EFB_data<-read.csv("data14_15_EFB.csv")
+head(EFB_data)
+
+plot(table(EFB_data$hydmor_total))
+
+# My response variables, hydmor_total is the total percent cover of Frogbit in each quadrat, and hydmor_pres is binomial whether it is absent (0) or present (1) in the transect plots. Therefore, I can run a beta regression model on the positive continuous % cover data and a binomial glm on the presence data. I chose water_depth is my sole predictor variable to see whether it significantly affects frogbit presence/abundance in Michigan wetlands.  
+
+library("betareg")
+library("ggplot2")
+
+EFB_data$EFBpropveg<- EFB_data$hydmor_total/100
+# removing all 0 and 1 values so that the beta reg is able to fit these data. 
+beta_dat1<-EFB_data[-which(EFB_data$EFBpropveg==0),]
+beta_dat<-beta_dat1[-which(beta_dat1$EFBpropveg==1),]
+dim(beta_dat)
+
+#beta regression
+m1<-betareg(EFBpropveg~water_depth,data=beta_dat)
+coef(m1)
+plogis(-0.809661449)
+confint(m1)
+
+# including quadratic(looks like it may fit these data better)
+m2<-betareg(EFBpropveg~water_depth+I(water_depth^2),data=beta_dat)
+coef(m2)
+plogis(-1.0301773490)
+#effect size 
+plogis(-1.0301773490+0.0058898232*250)-plogis(-1.0301773490+0.0058898232*50)
+confint(m2)
+
+#binomial  
+m3<-glm(hydmor_pres~water_depth, data=EFB_data,family="binomial")
+coef(m3)
+plogis(-2.5038308574)
+confint(m3)
+
+
+plot(EFBpropveg~water_depth,data=beta_dat)
+#linear
+curve(plogis(-0.809661+-0.004537*x),col="red",lwd=5,add=T)
+#quadratic
+curve(plogis(-1.03018+0.0058898*x+coef(m2)[3]*x^2),col="green2",lwd=5,add=T)
+#binom curve
+curve(plogis(-2.50383+0.0002927884*x),col="blue",lwd=5,add=T)
+
+
+
+#changing scale of water_depth
+plot(EFBpropveg~water_depth+I(water_depth^2),data=beta_dat)
+#linear
+curve(plogis(-0.809661+-0.004537*x),col="red",lwd=5,add=T)
+#quadratic
+curve(plogis(-1.03018+0.0058898*x+coef(m2)[3]*x^2),col="green2",lwd=5,add=T)
+#binom curve
+curve(plogis(-2.50383+0.0002927884*x),col="red",lwd=5,add=T)
+
+
+### For these analyses, there is a significant effect of water depth on Frogbit percent cover from the beta regressions on both the linear and quadratic models. In particular, with the quadratic model, there is a 28% decrease in EFB percent cover when depth increases from 50 cm to 250 cm. Moreover, the CIs for both the beta linear/quadratic models do not cross zero, indicating a significant effect of water depth on frogbit abundance. In contrast, there was no significant effect of water depth on frogbit presence (CI crosses zero and large p value). Overall, it seems that water depth does not affect whether frogbit is present or absent at a wetland, but it does affect its relative abundance when it is present. It should be noted that I removed the many zeros in the dataset for the beta regression models, so I may need to account for this overdispersion with further zero-inflated/hurdle models on whether water_depth (along with other covariates in the dataset) affects frogbit abundance. 
+
+
+```
